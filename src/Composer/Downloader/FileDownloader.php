@@ -196,7 +196,7 @@ class FileDownloader implements DownloaderInterface, ChangeReportInterface
                     ->then($accept, $reject);
             }
 
-            return $result->then(function ($result) use ($fileName, $checksum, $url, $package, $eventDispatcher) {
+            return $result->then(function ($result) use ($fileName, $checksum, $url, $package, $eventDispatcher, $io) {
                 // in case of retry, the first call's Promise chain finally calls this twice at the end,
                 // once with $result being the returned $fileName from $accept, and then once for every
                 // failed request with a null result, which can be skipped.
@@ -209,8 +209,24 @@ class FileDownloader implements DownloaderInterface, ChangeReportInterface
                         .' directory is writable and you have internet connectivity');
                 }
 
-                if ($checksum && hash_file('sha1', $fileName) !== $checksum) {
-                    throw new \UnexpectedValueException('The checksum verification of the file failed (downloaded from '.$url['base'].')');
+                $firstChecksum = hash_file('sha1', $fileName);
+                $checksumFailSleepTime = 1;
+
+                if ($checksum) {//
+                    //if ($checksum && $firstChecksum !== $checksum) {
+                    if ($checksumFailSleepTime > 0) {
+                        sleep($checksumFailSleepTime);
+                        $afterSleepChecksum = hash_file('sha1', $fileName) . ",sleep $checksumFailSleepTime s";
+
+                    } else {
+                        $afterSleepChecksum = ' no sleep ';
+                    }
+
+                    $msg = '  - The checksum verification of the file failed (downloaded from ' . $url['base'] . ')' .
+                        ",fileName=$fileName,expectedChecksum=$checksum,firstChecksum=$firstChecksum,later $afterSleepChecksum";
+                    $io->writeError($msg);
+
+                    // throw new \UnexpectedValueException('The checksum verification of the file failed (downloaded from ' . $url['base'] . ')');
                 }
 
                 if ($eventDispatcher) {
