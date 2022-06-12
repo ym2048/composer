@@ -160,8 +160,10 @@ class ZipDownloader extends ArchiveDownloader
 
                     $content = file_get_contents($package->getDistUrl());
                     file_put_contents($file, $content);
+                    $newDownloadedChecksum = hash_file('sha1', $file);
 
-                    return $tryFallback(new \RuntimeException('Failed to extract '.$package->getName().': ('.$process->getExitCode().') '.$command."\n\n".$output));
+
+                    return $tryFallback(new \RuntimeException('Failed to extract '.$package->getName().': ('.$process->getExitCode().') '.$command."\n\n".$output.',file='.$file.',sha1='.$newDownloadedChecksum));
                 }
             });
         } catch (\Exception $e) {
