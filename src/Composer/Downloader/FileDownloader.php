@@ -210,23 +210,28 @@ class FileDownloader implements DownloaderInterface, ChangeReportInterface
                 }
 
                 $firstChecksum = hash_file('sha1', $fileName);
-                $checksumFailSleepTime = 1;
 
-                if ($checksum) {//
-                    //if ($checksum && $firstChecksum !== $checksum) {
-                    if ($checksumFailSleepTime > 0) {
-                        sleep($checksumFailSleepTime);
-                        $afterSleepChecksum = hash_file('sha1', $fileName) . ",sleep $checksumFailSleepTime s";
+                if ($checksum) {
+                    if ($checksum && $firstChecksum !== $checksum) {
+                        $file = fopen($fileName,"r");
+                        $st = fstat($file);
+                        fclose($file);
 
-                    } else {
-                        $afterSleepChecksum = ' no sleep ';
+                        $content = file_get_contents($url['base']);
+                        file_put_contents($fileName, $content);
+                        $newDownloadedChecksum = hash_file('sha1', $fileName);
+
+
+
+                        $msg = '  - The checksum verification of the file failed (downloaded from ' . $url['base'] . ')' .
+                            ",fileName=$fileName,expectedChecksum=$checksum,firstChecksum=$firstChecksum, newDownloadedChecksum=$newDownloadedChecksum" .
+                            ',package->getDistUrl=' . $package->getDistUrl().",originSize=".$st['size'];
+                        $io->writeError($msg);
+
+                        if ($newDownloadedChecksum !== $checksum) {
+                            throw new \UnexpectedValueException('The checksum verification of the file failed (downloaded from ' . $url['base'] . ')');
+                        }
                     }
-
-                    $msg = '  - The checksum verification of the file failed (downloaded from ' . $url['base'] . ')' .
-                        ",fileName=$fileName,expectedChecksum=$checksum,firstChecksum=$firstChecksum,later $afterSleepChecksum";
-                    $io->writeError($msg);
-
-                    // throw new \UnexpectedValueException('The checksum verification of the file failed (downloaded from ' . $url['base'] . ')');
                 }
 
                 if ($eventDispatcher) {
